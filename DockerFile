@@ -1,1 +1,22 @@
-#
+# Stage 1: Dependency builder
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+
+# Stage 2: Ultra Minimal Runner (Final Shrink)
+FROM alpine:3.19
+WORKDIR /app
+
+# Install only minimal nodejs execution runtime (No npm, no extra layers)
+RUN apk add --no-cache nodejs
+
+# Copy pruned dependencies and code
+COPY --from=builder /app/node_modules ./node_modules
+COPY . .
+
+ENV NODE_ENV=production
+EXPOSE 3000
+
+# Run directly using node executable
+CMD ["node", "index.js"]
